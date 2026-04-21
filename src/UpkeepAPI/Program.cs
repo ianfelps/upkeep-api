@@ -10,7 +10,7 @@ using UpkeepAPI.Data;
 using UpkeepAPI.Services;
 using UpkeepAPI.Services.Interfaces;
 
-Env.Load();
+Env.TraversePath().Load();
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -42,6 +42,8 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 
 builder.Services.AddAuthorization();
 
+var isTesting = builder.Environment.IsEnvironment("Testing");
+
 builder.Services.AddRateLimiter(options =>
 {
     options.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(context =>
@@ -49,14 +51,14 @@ builder.Services.AddRateLimiter(options =>
             partitionKey: context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
             factory: _ => new FixedWindowRateLimiterOptions
             {
-                PermitLimit = 100,
+                PermitLimit = isTesting ? int.MaxValue : 100,
                 Window = TimeSpan.FromMinutes(1),
                 QueueLimit = 0
             }));
 
     options.AddFixedWindowLimiter("auth", o =>
     {
-        o.PermitLimit = 10;
+        o.PermitLimit = isTesting ? int.MaxValue : 10;
         o.Window = TimeSpan.FromMinutes(1);
         o.QueueLimit = 0;
     });
@@ -123,3 +125,6 @@ app.UseAuthorization();
 app.MapControllers();
 
 app.Run();
+
+public partial class Program;
+
