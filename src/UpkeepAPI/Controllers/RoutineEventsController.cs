@@ -33,14 +33,27 @@ public class RoutineEventsController : ControllerBase
     [HttpGet("")]
     [SwaggerOperation(
         Summary = "Listar eventos de rotina do usuário autenticado",
-        Description = "Retorna todos os eventos de rotina do usuário. Aceita o parâmetro opcional `updatedSince` (ISO 8601, UTC) para sincronização delta em cenários offline-first — somente eventos com `UpdatedAt` maior que o valor informado são retornados."
+        Description = """
+            Retorna eventos de rotina do usuário filtrados por intervalo de datas.
+
+            **Comportamento padrão (sem `from`/`to`):** retorna os eventos do dia atual.
+
+            **Filtro por intervalo:** use `from` e `to` (formato `YYYY-MM-DD`) para buscar por dia, semana ou mês.
+            - Eventos recorrentes: retornados se algum dia da semana ocorre no intervalo.
+            - Eventos únicos: retornados se a data específica está no intervalo.
+
+            **Sincronização offline-first:** informe `updatedSince` (ISO 8601, UTC) para buscar todos os eventos modificados após aquele momento, sem filtro de data.
+            """
     )]
     [SwaggerResponse(StatusCodes.Status200OK, "Eventos retornados com sucesso", typeof(List<RoutineEventDto>))]
     [SwaggerResponse(StatusCodes.Status401Unauthorized, "Token ausente ou inválido")]
-    public async Task<IActionResult> GetAll([FromQuery] DateTime? updatedSince)
+    public async Task<IActionResult> GetAll(
+        [FromQuery] DateTime? updatedSince,
+        [FromQuery] DateOnly? from,
+        [FromQuery] DateOnly? to)
     {
         var userId = GetCurrentUserId();
-        var events = await _routineEventService.GetAllByUserAsync(userId, updatedSince);
+        var events = await _routineEventService.GetAllByUserAsync(userId, updatedSince, from, to);
         return Ok(events);
     }
 

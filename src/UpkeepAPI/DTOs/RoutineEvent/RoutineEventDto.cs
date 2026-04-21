@@ -7,7 +7,9 @@ public class RoutineEventDto
     public string? Description { get; set; }
     public TimeSpan StartTime { get; set; }
     public TimeSpan? EndTime { get; set; }
-    public int[] DaysOfWeek { get; set; } = Array.Empty<int>();
+    public int[]? DaysOfWeek { get; set; }
+    public DateOnly? EventDate { get; set; }
+    public string EventType { get; set; } = string.Empty;
     public bool IsActive { get; set; }
     public Guid UserId { get; set; }
     public DateTime CreatedAt { get; set; }

@@ -13,6 +13,8 @@ public static class RoutineEventMapper
         StartTime = routineEvent.StartTime,
         EndTime = routineEvent.EndTime,
         DaysOfWeek = routineEvent.DaysOfWeek,
+        EventDate = routineEvent.EventDate,
+        EventType = routineEvent.EventDate.HasValue ? "once" : "recurring",
         IsActive = routineEvent.IsActive,
         UserId = routineEvent.UserId,
         CreatedAt = routineEvent.CreatedAt,

@@ -4,7 +4,7 @@ namespace UpkeepAPI.Services.Interfaces;
 
 public interface IRoutineEventService
 {
-    Task<List<RoutineEventDto>> GetAllByUserAsync(Guid userId, DateTime? updatedSince);
+    Task<List<RoutineEventDto>> GetAllByUserAsync(Guid userId, DateTime? updatedSince, DateOnly? from, DateOnly? to);
     Task<RoutineEventDto> GetByIdAsync(Guid userId, Guid id);
     Task<RoutineEventDto> CreateAsync(Guid userId, CreateRoutineEventDto dto);
     Task<RoutineEventDto> UpdateAsync(Guid userId, Guid id, UpdateRoutineEventDto dto);

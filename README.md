@@ -130,15 +130,30 @@ Formato padrão para erros de negócio:
 
 ### Routine Events
 
-Eventos recorrentes de calendário vinculados ao usuário autenticado. Campos: `title`, `description`, `startTime`, `endTime`, `daysOfWeek` (array de inteiros 0–6, onde 0 = domingo), `isActive`.
+Eventos de calendário vinculados ao usuário autenticado. Suporta dois tipos:
+
+- **Recorrente** (`eventType: "recurring"`): repete nos dias da semana informados em `daysOfWeek` (array de inteiros 0–6, onde 0 = domingo).
+- **Único** (`eventType: "once"`): ocorre em uma data específica (`eventDate`, formato `YYYY-MM-DD`).
+
+Exatamente um de `daysOfWeek` ou `eventDate` deve ser informado na criação/atualização.
 
 | Método | Rota | Auth | Descrição |
 |---|---|---|---|
-| GET | `/routine-events` | JWT | Listar eventos de rotina do usuário (aceita `?updatedSince=<iso8601>` para sync delta) |
+| GET | `/routine-events` | JWT | Listar eventos por intervalo de datas (ver filtros abaixo) |
 | GET | `/routine-events/{id}` | JWT | Obter um evento de rotina específico |
 | POST | `/routine-events` | JWT | Criar novo evento de rotina |
 | PUT | `/routine-events/{id}` | JWT | Atualizar evento de rotina |
 | DELETE | `/routine-events/{id}` | JWT | Excluir evento de rotina |
+
+**Filtros do `GET /routine-events`:**
+
+| Parâmetro | Tipo | Descrição |
+|---|---|---|
+| `from` | `YYYY-MM-DD` | Início do intervalo |
+| `to` | `YYYY-MM-DD` | Fim do intervalo |
+| `updatedSince` | ISO 8601 UTC | Retorna todos os eventos modificados após essa data (sync delta — ignora `from`/`to`) |
+
+Sem `from`/`to`, retorna os eventos do **dia atual**. Para semana ou mês, o cliente calcula os limites e passa como `from`/`to`. Timestamps são sempre UTC — a conversão para o fuso do usuário é responsabilidade do cliente.
 
 ### Autenticação offline-first
 

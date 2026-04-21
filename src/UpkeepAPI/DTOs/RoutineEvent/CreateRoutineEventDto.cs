@@ -16,22 +16,30 @@ public class CreateRoutineEventDto : IValidatableObject
 
     public TimeSpan? EndTime { get; set; }
 
+    public int[]? DaysOfWeek { get; set; }
+
+    public DateOnly? EventDate { get; set; }
+
+    public bool IsActive { get; set; } = true;
+
     public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
     {
+        var hasDays = DaysOfWeek is { Length: > 0 };
+        var hasDate = EventDate.HasValue;
+
+        if (hasDays == hasDate)
+            yield return new ValidationResult(
+                "Informe exatamente um de: dias da semana (recorrente) ou data específica (evento único).",
+                [nameof(DaysOfWeek), nameof(EventDate)]);
+
+        if (hasDays && DaysOfWeek!.Any(d => d < 0 || d > 6))
+            yield return new ValidationResult(
+                "Os dias da semana devem ser valores entre 0 (domingo) e 6 (sábado).",
+                [nameof(DaysOfWeek)]);
+
         if (EndTime.HasValue && EndTime.Value <= StartTime)
             yield return new ValidationResult(
                 "A hora de término deve ser maior que a hora de início.",
                 [nameof(EndTime)]);
-
-        if (DaysOfWeek.Any(d => d < 0 || d > 6))
-            yield return new ValidationResult(
-                "Os dias da semana devem ser valores entre 0 (domingo) e 6 (sábado).",
-                [nameof(DaysOfWeek)]);
     }
-
-    [Required(ErrorMessage = "Os dias da semana são obrigatórios.")]
-    [MinLength(1, ErrorMessage = "Informe ao menos um dia da semana.")]
-    public int[] DaysOfWeek { get; set; } = Array.Empty<int>();
-
-    public bool IsActive { get; set; } = true;
 }

@@ -50,6 +50,8 @@ dotnet ef database update --project src/UpkeepAPI         # Apply migrations
 - Keep user-facing messages and validation output in Portuguese
 - Rate limiting: global 100 req/min, `"auth"` policy 10 req/min (applied to auth + health routes); in `Testing` env both limits become `int.MaxValue`
 - Offline-first: frontend will run a local DB and sync via the API. Keep `UpdatedAt` on every DTO and support `?updatedSince=<iso8601>` on list endpoints for delta sync (see `RoutineEventsController`). Server generates ids; conflict strategy is last-write-wins on `UpdatedAt`; deletes are hard (no tombstones yet).
+- `RoutineEvent` supports two event types: **recurring** (`DaysOfWeek int[]`, repeats on given weekdays) and **once** (`EventDate DateOnly`, single occurrence). Exactly one must be set — validated in DTOs via `IValidatableObject` and in the service. `GET /routine-events` defaults to today; use `?from=&to=` for a date range. `?updatedSince=` bypasses the date filter (full delta sync).
+- All timestamps are stored and returned in UTC. Clients are responsible for converting to the user's local timezone for display.
 - Auth uses **access token (short-lived JWT) + refresh token (long-lived, 60 days default)**. Refresh tokens are persisted as SHA-256 hashes in `RefreshTokens` with `RevokedAt`. `POST /auth/refresh` rotates (revokes the old, issues a new pair) — never keep an old refresh token alive after refresh. `ClockSkew` is 5 min to tolerate device clock drift offline. `Jwt__RefreshExpirationInDays` env var controls refresh lifetime.
 - Tests use Testcontainers with `postgres:16-alpine`; one container per test run, `TRUNCATE` between tests via `ApiFactory.ResetDatabaseAsync`
 

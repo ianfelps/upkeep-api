@@ -16,7 +16,7 @@ public class RoutineEventService : IRoutineEventService
         _context = context;
     }
 
-    public async Task<List<RoutineEventDto>> GetAllByUserAsync(Guid userId, DateTime? updatedSince)
+    public async Task<List<RoutineEventDto>> GetAllByUserAsync(Guid userId, DateTime? updatedSince, DateOnly? from, DateOnly? to)
     {
         var query = _context.RoutineEvents.AsNoTracking().Where(re => re.UserId == userId);
 
@@ -24,10 +24,37 @@ public class RoutineEventService : IRoutineEventService
         {
             var since = DateTime.SpecifyKind(updatedSince.Value, DateTimeKind.Utc);
             query = query.Where(re => re.UpdatedAt > since);
+
+            // Delta sync: return all matching events without date filter
+            var allChanged = await query.OrderBy(re => re.StartTime).ToListAsync();
+            return allChanged.Select(re => re.ToDto()).ToList();
         }
+
+        // Default: filter by date range (or today if none provided)
+        var rangeFrom = from ?? DateOnly.FromDateTime(DateTime.UtcNow);
+        var rangeTo = to ?? rangeFrom;
+
+        var daysInRange = GetDaysOfWeekInRange(rangeFrom, rangeTo);
+
+        query = query.Where(re =>
+            (re.EventDate.HasValue && re.EventDate >= rangeFrom && re.EventDate <= rangeTo) ||
+            (!re.EventDate.HasValue && re.DaysOfWeek != null &&
+             re.DaysOfWeek.Any(d => daysInRange.Contains(d))));
 
         var events = await query.OrderBy(re => re.StartTime).ToListAsync();
         return events.Select(re => re.ToDto()).ToList();
+    }
+
+    private static HashSet<int> GetDaysOfWeekInRange(DateOnly from, DateOnly to)
+    {
+        var days = new HashSet<int>();
+        var current = from;
+        while (current <= to && days.Count < 7)
+        {
+            days.Add((int)current.DayOfWeek);
+            current = current.AddDays(1);
+        }
+        return days;
     }
 
     public async Task<RoutineEventDto> GetByIdAsync(Guid userId, Guid id)
@@ -38,7 +65,7 @@ public class RoutineEventService : IRoutineEventService
 
     public async Task<RoutineEventDto> CreateAsync(Guid userId, CreateRoutineEventDto dto)
     {
-        ValidateSchedule(dto.StartTime, dto.EndTime, dto.DaysOfWeek);
+        ValidateSchedule(dto.StartTime, dto.EndTime, dto.DaysOfWeek, dto.EventDate);
 
         var userExists = await _context.Users.AnyAsync(u => u.Id == userId);
         if (!userExists)
@@ -50,7 +77,8 @@ public class RoutineEventService : IRoutineEventService
             Description = dto.Description?.Trim(),
             StartTime = dto.StartTime,
             EndTime = dto.EndTime,
-            DaysOfWeek = dto.DaysOfWeek.Distinct().OrderBy(d => d).ToArray(),
+            DaysOfWeek = dto.DaysOfWeek?.Distinct().OrderBy(d => d).ToArray(),
+            EventDate = dto.EventDate,
             IsActive = dto.IsActive,
             UserId = userId
         };
@@ -63,7 +91,7 @@ public class RoutineEventService : IRoutineEventService
 
     public async Task<RoutineEventDto> UpdateAsync(Guid userId, Guid id, UpdateRoutineEventDto dto)
     {
-        ValidateSchedule(dto.StartTime, dto.EndTime, dto.DaysOfWeek);
+        ValidateSchedule(dto.StartTime, dto.EndTime, dto.DaysOfWeek, dto.EventDate);
 
         var routineEvent = await FindOwnedAsync(userId, id);
 
@@ -71,7 +99,8 @@ public class RoutineEventService : IRoutineEventService
         routineEvent.Description = dto.Description?.Trim();
         routineEvent.StartTime = dto.StartTime;
         routineEvent.EndTime = dto.EndTime;
-        routineEvent.DaysOfWeek = dto.DaysOfWeek.Distinct().OrderBy(d => d).ToArray();
+        routineEvent.DaysOfWeek = dto.DaysOfWeek?.Distinct().OrderBy(d => d).ToArray();
+        routineEvent.EventDate = dto.EventDate;
         routineEvent.IsActive = dto.IsActive;
 
         await _context.SaveChangesAsync();
@@ -95,9 +124,15 @@ public class RoutineEventService : IRoutineEventService
             ?? throw new KeyNotFoundException("Evento de rotina não encontrado.");
     }
 
-    private static void ValidateSchedule(TimeSpan startTime, TimeSpan? endTime, int[] daysOfWeek)
+    private static void ValidateSchedule(TimeSpan startTime, TimeSpan? endTime, int[]? daysOfWeek, DateOnly? eventDate)
     {
-        if (daysOfWeek.Any(d => d < 0 || d > 6))
+        var hasDays = daysOfWeek is { Length: > 0 };
+        var hasDate = eventDate.HasValue;
+
+        if (hasDays == hasDate)
+            throw new InvalidOperationException("Informe exatamente um de: dias da semana (recorrente) ou data específica (evento único).");
+
+        if (hasDays && daysOfWeek!.Any(d => d < 0 || d > 6))
             throw new InvalidOperationException("Dias da semana devem estar entre 0 (domingo) e 6 (sábado).");
 
         if (endTime.HasValue && endTime.Value <= startTime)
