@@ -13,7 +13,7 @@ src/UpkeepAPI/
   Controllers/    → HTTP layer: routing, request/response, Swagger annotations
   DTOs/           → Input/output contracts (Auth/, User/)
   Mappers/        → Static extension methods: Model → DTO
-  Models/         → Domain entities, all inherit from BaseEntity
+  Models/         → Domain entities (User + Habit/Routine graph), all inherit from BaseEntity
   Services/       → Business logic (Interfaces/ + implementations)
   Data/           → AppDbContext: EF Core config + auto timestamps
   Migrations/     → EF Core migrations
@@ -29,6 +29,7 @@ All code in English. User-facing messages (API responses, validation errors) in 
 All commands run from the repo root.
 
 ```bash
+dotnet restore                    # Restore packages
 dotnet build                      # Build solution
 dotnet run --project src/UpkeepAPI  # Run API
 dotnet watch --project src/UpkeepAPI run  # Run with hot reload
@@ -45,6 +46,8 @@ dotnet ef database update --project src/UpkeepAPI         # Apply migrations
 - Credentials live in `.env` at the repo root only (never in `appsettings.json`); loaded via `Env.TraversePath().Load()` so the file is found regardless of CWD
 - `.env` values use `__` to map to .NET config hierarchy (e.g. `Jwt__SecretKey` → `Jwt:SecretKey`)
 - Quote `.env` values containing `$` with single quotes to prevent interpolation
+- Keep code identifiers and source code in English
+- Keep user-facing messages and validation output in Portuguese
 - Rate limiting: global 100 req/min, `"auth"` policy 10 req/min (applied to auth + health routes); in `Testing` env both limits become `int.MaxValue`
 - Tests use Testcontainers with `postgres:16-alpine`; one container per test run, `TRUNCATE` between tests via `ApiFactory.ResetDatabaseAsync`
 

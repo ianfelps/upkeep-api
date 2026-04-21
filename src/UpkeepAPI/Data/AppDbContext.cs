@@ -8,6 +8,11 @@ public class AppDbContext : DbContext
     public AppDbContext(DbContextOptions<AppDbContext> options) : base(options) { }
 
     public DbSet<User> Users => Set<User>();
+    public DbSet<UserProgress> UserProgress => Set<UserProgress>();
+    public DbSet<Habit> Habits => Set<Habit>();
+    public DbSet<HabitLog> HabitLogs => Set<HabitLog>();
+    public DbSet<RoutineEvent> RoutineEvents => Set<RoutineEvent>();
+    public DbSet<HabitRoutineLink> HabitRoutineLinks => Set<HabitRoutineLink>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -30,6 +35,56 @@ public class AppDbContext : DbContext
             entity.Property(u => u.Name).IsRequired().HasMaxLength(100);
             entity.Property(u => u.Email).IsRequired().HasMaxLength(255);
             entity.Property(u => u.PasswordHash).IsRequired();
+        });
+
+        modelBuilder.Entity<UserProgress>(entity =>
+        {
+            entity.HasIndex(up => up.UserId).IsUnique();
+            entity.HasOne(up => up.User)
+                  .WithOne()
+                  .HasForeignKey<UserProgress>(up => up.UserId)
+                  .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<Habit>(entity =>
+        {
+            entity.Property(h => h.Title).IsRequired().HasMaxLength(100);
+            entity.Property(h => h.Color).IsRequired().HasMaxLength(7);
+            entity.Property(h => h.LucideIcon).IsRequired().HasMaxLength(50);
+            entity.HasOne(h => h.User)
+                  .WithMany()
+                  .HasForeignKey(h => h.UserId)
+                  .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<HabitLog>(entity =>
+        {
+            entity.HasOne(hl => hl.Habit)
+                  .WithMany()
+                  .HasForeignKey(hl => hl.HabitId)
+                  .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<RoutineEvent>(entity =>
+        {
+            entity.Property(re => re.Title).IsRequired().HasMaxLength(100);
+            entity.HasOne(re => re.User)
+                  .WithMany()
+                  .HasForeignKey(re => re.UserId)
+                  .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<HabitRoutineLink>(entity =>
+        {
+            entity.HasIndex(hrl => new { hrl.HabitId, hrl.RoutineEventId }).IsUnique();
+            entity.HasOne(hrl => hrl.Habit)
+                  .WithMany()
+                  .HasForeignKey(hrl => hrl.HabitId)
+                  .OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(hrl => hrl.RoutineEvent)
+                  .WithMany()
+                  .HasForeignKey(hrl => hrl.RoutineEventId)
+                  .OnDelete(DeleteBehavior.Cascade);
         });
     }
 

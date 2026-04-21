@@ -10,6 +10,7 @@ Backend do aplicativo Upkeep. API REST em C# / .NET 8 com autenticação JWT e b
 - BCrypt para hashing de senhas
 - Swagger UI com Swashbuckle Annotations
 - Rate Limiting nativo do .NET 8
+- DotNetEnv para carregamento de variáveis de ambiente
 - xUnit + Testcontainers (testes de integração com Postgres real)
 
 ## Estrutura
@@ -20,13 +21,13 @@ upkeep-api/
 │   ├── Controllers/        → Rotas HTTP com annotations Swagger
 │   ├── DTOs/               → Contratos de entrada e saída (Auth/, User/)
 │   ├── Mappers/            → Extensões de mapeamento Model → DTO
-│   ├── Models/             → Entidades do domínio (herdam de BaseEntity)
+│   ├── Models/             → Entidades do domínio (users, habits, routines)
 │   ├── Services/           → Regras de negócio (Interfaces/ + implementações)
 │   ├── Data/               → AppDbContext com timestamps automáticos
 │   └── Migrations/         → Migrations do EF Core
 └── tests/UpkeepAPI.Tests/  → Testes de integração
-    ├── Fixtures/            → ApiFactory (WebApplicationFactory + Testcontainers)
-    └── Integration/         → Suítes por endpoint (Health, Auth, Users)
+    ├── Fixtures/           → ApiFactory (WebApplicationFactory + Testcontainers)
+    └── Integration/        → Suítes por endpoint (Health, Auth, Users)
 ```
 
 ## Configuração
@@ -66,7 +67,7 @@ Jwt__Audience=upkeep-app
 Jwt__ExpirationInHours=24
 ```
 
-> Senhas com caracteres especiais (`$`, `!`) devem estar entre aspas simples no `.env`.
+> Valores com `$` no `.env` devem ficar entre aspas simples para evitar interpolação.
 
 ### 4. Aplicar migrations
 
@@ -80,17 +81,33 @@ dotnet ef database update --project src/UpkeepAPI
 dotnet run --project src/UpkeepAPI
 ```
 
-A API estará disponível em `https://localhost:PORT`. O Swagger UI em `/swagger`.
+Swagger disponível em `/swagger`.
+
+### 6. Desenvolvimento com hot reload
+
+```bash
+dotnet watch --project src/UpkeepAPI run
+```
 
 ## Testes
 
-Requer Docker em execução (Testcontainers sobe um container Postgres automaticamente).
+Requer Docker em execução.
+
+- Testcontainers sobe um container `postgres:16-alpine` por execução de testes.
+- O banco é limpo entre cenários pela fixture de integração.
+- Em ambiente `Testing`, os limites de rate limiting ficam em `int.MaxValue` para evitar flakiness.
 
 ```bash
 dotnet test
 ```
 
 ## Rotas
+
+Formato padrão para erros de negócio:
+
+```json
+{ "message": "..." }
+```
 
 ### Auth
 
@@ -121,4 +138,4 @@ dotnet test
 | Global | 100 req/min por IP | Todas as rotas |
 | `auth` | 10 req/min por IP | `/auth/*` e `/health` |
 
-Requisições que excedem o limite retornam `429 Too Many Requests`.
+Requisições acima do limite retornam `429 Too Many Requests`.
