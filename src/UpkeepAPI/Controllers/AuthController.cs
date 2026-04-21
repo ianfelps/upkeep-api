@@ -61,4 +61,38 @@ public class AuthController : ControllerBase
             return Unauthorized(new { message = ex.Message });
         }
     }
+
+    [HttpPost("refresh")]
+    [SwaggerOperation(
+        Summary = "Renovar access token usando refresh token",
+        Description = "Troca um refresh token válido por um novo par (access token + refresh token). O refresh token anterior é revogado — rotação em cada chamada."
+    )]
+    [SwaggerResponse(StatusCodes.Status200OK, "Tokens renovados com sucesso", typeof(AuthResponseDto))]
+    [SwaggerResponse(StatusCodes.Status400BadRequest, "Dados inválidos")]
+    [SwaggerResponse(StatusCodes.Status401Unauthorized, "Refresh token inválido, revogado ou expirado")]
+    public async Task<IActionResult> Refresh([FromBody] RefreshTokenRequestDto dto)
+    {
+        try
+        {
+            var result = await _authService.RefreshAsync(dto.RefreshToken);
+            return Ok(result);
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            return Unauthorized(new { message = ex.Message });
+        }
+    }
+
+    [HttpPost("logout")]
+    [SwaggerOperation(
+        Summary = "Revogar refresh token do dispositivo atual",
+        Description = "Revoga o refresh token informado. O access token continua válido até expirar naturalmente. Idempotente: tokens desconhecidos retornam 204 sem erro."
+    )]
+    [SwaggerResponse(StatusCodes.Status204NoContent, "Refresh token revogado")]
+    [SwaggerResponse(StatusCodes.Status400BadRequest, "Dados inválidos")]
+    public async Task<IActionResult> Logout([FromBody] RefreshTokenRequestDto dto)
+    {
+        await _authService.LogoutAsync(dto.RefreshToken);
+        return NoContent();
+    }
 }

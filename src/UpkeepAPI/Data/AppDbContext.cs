@@ -13,6 +13,7 @@ public class AppDbContext : DbContext
     public DbSet<HabitLog> HabitLogs => Set<HabitLog>();
     public DbSet<RoutineEvent> RoutineEvents => Set<RoutineEvent>();
     public DbSet<HabitRoutineLink> HabitRoutineLinks => Set<HabitRoutineLink>();
+    public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -71,6 +72,16 @@ public class AppDbContext : DbContext
             entity.HasOne(re => re.User)
                   .WithMany()
                   .HasForeignKey(re => re.UserId)
+                  .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<RefreshToken>(entity =>
+        {
+            entity.Property(rt => rt.TokenHash).IsRequired().HasMaxLength(128);
+            entity.HasIndex(rt => rt.TokenHash).IsUnique();
+            entity.HasOne(rt => rt.User)
+                  .WithMany()
+                  .HasForeignKey(rt => rt.UserId)
                   .OnDelete(DeleteBehavior.Cascade);
         });
 

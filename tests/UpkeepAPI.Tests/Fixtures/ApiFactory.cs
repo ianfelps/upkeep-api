@@ -30,6 +30,7 @@ public class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
         Environment.SetEnvironmentVariable("Jwt__Issuer", "UpkeepAPI.Tests");
         Environment.SetEnvironmentVariable("Jwt__Audience", "UpkeepAPI.Tests");
         Environment.SetEnvironmentVariable("Jwt__ExpirationInHours", "1");
+        Environment.SetEnvironmentVariable("Jwt__RefreshExpirationInDays", "60");
 
         using var scope = Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();

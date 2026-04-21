@@ -1,5 +1,6 @@
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
+using System.Security.Cryptography;
 using System.Text;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
@@ -38,11 +39,7 @@ public class AuthService : IAuthService
         _context.Users.Add(user);
         await _context.SaveChangesAsync();
 
-        return new AuthResponseDto
-        {
-            Token = GenerateToken(user),
-            User = user.ToDto()
-        };
+        return await BuildAuthResponseAsync(user);
     }
 
     public async Task<AuthResponseDto> LoginAsync(LoginRequestDto dto)
@@ -51,14 +48,53 @@ public class AuthService : IAuthService
         if (user is null || !BCrypt.Net.BCrypt.Verify(dto.Password, user.PasswordHash))
             throw new UnauthorizedAccessException("E-mail ou senha inválidos.");
 
+        return await BuildAuthResponseAsync(user);
+    }
+
+    public async Task<AuthResponseDto> RefreshAsync(string refreshToken)
+    {
+        var hash = HashToken(refreshToken);
+        var stored = await _context.RefreshTokens
+            .Include(rt => rt.User)
+            .FirstOrDefaultAsync(rt => rt.TokenHash == hash);
+
+        if (stored is null || stored.RevokedAt is not null || stored.ExpiresAt <= DateTime.UtcNow)
+            throw new UnauthorizedAccessException("Refresh token inválido ou expirado.");
+
+        stored.RevokedAt = DateTime.UtcNow;
+        await _context.SaveChangesAsync();
+
+        return await BuildAuthResponseAsync(stored.User);
+    }
+
+    public async Task LogoutAsync(string refreshToken)
+    {
+        var hash = HashToken(refreshToken);
+        var stored = await _context.RefreshTokens.FirstOrDefaultAsync(rt => rt.TokenHash == hash);
+
+        if (stored is null || stored.RevokedAt is not null)
+            return;
+
+        stored.RevokedAt = DateTime.UtcNow;
+        await _context.SaveChangesAsync();
+    }
+
+    private async Task<AuthResponseDto> BuildAuthResponseAsync(User user)
+    {
+        var (token, tokenExpiresAt) = GenerateAccessToken(user);
+        var (refreshToken, refreshExpiresAt) = await IssueRefreshTokenAsync(user.Id);
+
         return new AuthResponseDto
         {
-            Token = GenerateToken(user),
+            Token = token,
+            TokenExpiresAt = tokenExpiresAt,
+            RefreshToken = refreshToken,
+            RefreshTokenExpiresAt = refreshExpiresAt,
             User = user.ToDto()
         };
     }
 
-    private string GenerateToken(User user)
+    private (string Token, DateTime ExpiresAt) GenerateAccessToken(User user)
     {
         var jwtSettings = _configuration.GetSection("Jwt");
         var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSettings["SecretKey"]!));
@@ -81,6 +117,37 @@ public class AuthService : IAuthService
             signingCredentials: credentials
         );
 
-        return new JwtSecurityTokenHandler().WriteToken(token);
+        return (new JwtSecurityTokenHandler().WriteToken(token), expiration);
+    }
+
+    private async Task<(string Token, DateTime ExpiresAt)> IssueRefreshTokenAsync(Guid userId)
+    {
+        var jwtSettings = _configuration.GetSection("Jwt");
+        var days = double.Parse(jwtSettings["RefreshExpirationInDays"] ?? "60");
+        var expiresAt = DateTime.UtcNow.AddDays(days);
+
+        var raw = GenerateRefreshTokenString();
+        _context.RefreshTokens.Add(new RefreshToken
+        {
+            UserId = userId,
+            TokenHash = HashToken(raw),
+            ExpiresAt = expiresAt
+        });
+        await _context.SaveChangesAsync();
+
+        return (raw, expiresAt);
+    }
+
+    private static string GenerateRefreshTokenString()
+    {
+        var bytes = RandomNumberGenerator.GetBytes(64);
+        return Convert.ToBase64String(bytes)
+            .Replace("+", "-").Replace("/", "_").TrimEnd('=');
+    }
+
+    private static string HashToken(string token)
+    {
+        var bytes = SHA256.HashData(Encoding.UTF8.GetBytes(token));
+        return Convert.ToHexString(bytes);
     }
 }
