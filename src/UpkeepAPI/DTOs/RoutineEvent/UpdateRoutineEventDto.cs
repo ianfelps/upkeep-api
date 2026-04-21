@@ -2,7 +2,7 @@ using System.ComponentModel.DataAnnotations;
 
 namespace UpkeepAPI.DTOs.RoutineEvent;
 
-public class UpdateRoutineEventDto
+public class UpdateRoutineEventDto : IValidatableObject
 {
     [Required(ErrorMessage = "O título é obrigatório.")]
     [MaxLength(100, ErrorMessage = "O título deve ter no máximo 100 caracteres.")]
@@ -21,4 +21,17 @@ public class UpdateRoutineEventDto
     public int[] DaysOfWeek { get; set; } = Array.Empty<int>();
 
     public bool IsActive { get; set; } = true;
+
+    public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
+    {
+        if (EndTime.HasValue && EndTime.Value <= StartTime)
+            yield return new ValidationResult(
+                "A hora de término deve ser maior que a hora de início.",
+                [nameof(EndTime)]);
+
+        if (DaysOfWeek.Any(d => d < 0 || d > 6))
+            yield return new ValidationResult(
+                "Os dias da semana devem ser valores entre 0 (domingo) e 6 (sábado).",
+                [nameof(DaysOfWeek)]);
+    }
 }
