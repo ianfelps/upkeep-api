@@ -10,7 +10,7 @@ public class RoutineEventDto
     public int[]? DaysOfWeek { get; set; }
     public DateOnly? EventDate { get; set; }
     public string EventType { get; set; } = string.Empty;
-    public bool IsActive { get; set; }
+    public string? Color { get; set; }
     public Guid UserId { get; set; }
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }

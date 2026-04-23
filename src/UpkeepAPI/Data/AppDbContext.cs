@@ -71,6 +71,7 @@ public class AppDbContext : DbContext
             entity.Property(re => re.Title).IsRequired().HasMaxLength(100);
             entity.Property(re => re.DaysOfWeek).IsRequired(false);
             entity.Property(re => re.EventDate).IsRequired(false).HasColumnType("date");
+            entity.Property(re => re.Color).IsRequired(false).HasMaxLength(7);
             entity.HasOne(re => re.User)
                   .WithMany()
                   .HasForeignKey(re => re.UserId)

@@ -20,7 +20,8 @@ public class CreateRoutineEventDto : IValidatableObject
 
     public DateOnly? EventDate { get; set; }
 
-    public bool IsActive { get; set; } = true;
+    [MaxLength(7)]
+    public string? Color { get; set; }
 
     public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
     {

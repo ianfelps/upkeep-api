@@ -8,7 +8,7 @@ public class RoutineEvent : BaseEntity
     public TimeSpan? EndTime { get; set; }
     public int[]? DaysOfWeek { get; set; }
     public DateOnly? EventDate { get; set; }
-    public bool IsActive { get; set; } = true;
+    public string? Color { get; set; }
     public Guid UserId { get; set; }
     public User User { get; set; } = null!;
 }

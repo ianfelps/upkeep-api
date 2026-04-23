@@ -79,7 +79,7 @@ public class RoutineEventService : IRoutineEventService
             EndTime = dto.EndTime,
             DaysOfWeek = dto.DaysOfWeek?.Distinct().OrderBy(d => d).ToArray(),
             EventDate = dto.EventDate,
-            IsActive = dto.IsActive,
+            Color = dto.Color,
             UserId = userId
         };
 
@@ -101,7 +101,7 @@ public class RoutineEventService : IRoutineEventService
         routineEvent.EndTime = dto.EndTime;
         routineEvent.DaysOfWeek = dto.DaysOfWeek?.Distinct().OrderBy(d => d).ToArray();
         routineEvent.EventDate = dto.EventDate;
-        routineEvent.IsActive = dto.IsActive;
+        routineEvent.Color = dto.Color;
 
         await _context.SaveChangesAsync();
 

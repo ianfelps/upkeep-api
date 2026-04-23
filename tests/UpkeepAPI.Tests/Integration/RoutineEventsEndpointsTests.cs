@@ -1,5 +1,4 @@
 using System.Net;
-using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using UpkeepAPI.DTOs.RoutineEvent;
 using UpkeepAPI.Tests.Fixtures;
@@ -16,14 +15,14 @@ public class RoutineEventsEndpointsTests : IntegrationTestBase
         TimeSpan? startTime = null,
         TimeSpan? endTime = null,
         int[]? daysOfWeek = null,
-        bool isActive = true) => new()
+        string? color = null) => new()
         {
             Title = title,
             Description = description,
             StartTime = startTime ?? new TimeSpan(7, 0, 0),
             EndTime = endTime ?? new TimeSpan(7, 30, 0),
             DaysOfWeek = daysOfWeek ?? new[] { 1, 3, 5 },
-            IsActive = isActive
+            Color = color
         };
 
     [Fact]
@@ -46,8 +45,31 @@ public class RoutineEventsEndpointsTests : IntegrationTestBase
         var body = await response.Content.ReadFromJsonAsync<RoutineEventDto>();
         body!.Title.Should().Be("Meditação");
         body.DaysOfWeek.Should().BeEquivalentTo(new[] { 1, 3, 5 });
-        body.IsActive.Should().BeTrue();
         body.Id.Should().NotBe(Guid.Empty);
+    }
+
+    [Fact]
+    public async Task Create_WithColor_PersistsColor()
+    {
+        await RegisterAndAuthenticateAsync();
+
+        var response = await Client.PostAsJsonAsync("/routine-events",
+            ValidCreateDto(color: "#2563EB"));
+
+        response.StatusCode.Should().Be(HttpStatusCode.Created);
+        var body = await response.Content.ReadFromJsonAsync<RoutineEventDto>();
+        body!.Color.Should().Be("#2563EB");
+    }
+
+    [Fact]
+    public async Task Create_WithoutColor_ReturnsNullColor()
+    {
+        await RegisterAndAuthenticateAsync();
+
+        var response = await Client.PostAsJsonAsync("/routine-events", ValidCreateDto());
+
+        var body = await response.Content.ReadFromJsonAsync<RoutineEventDto>();
+        body!.Color.Should().BeNull();
     }
 
     [Fact]
@@ -103,18 +125,17 @@ public class RoutineEventsEndpointsTests : IntegrationTestBase
 
         var tokenA = Client.DefaultRequestHeaders.Authorization;
 
-        // segundo usuário
         Client.DefaultRequestHeaders.Authorization = null;
         await RegisterAndAuthenticateAsync(name: "B", email: "b@example.com");
         await Client.PostAsJsonAsync("/routine-events", ValidCreateDto(title: "Do usuário B"));
 
-        var listB = (await Client.GetFromJsonAsync<List<RoutineEventDto>>("/routine-events"))!;
+        var since = Uri.EscapeDataString("2000-01-01T00:00:00Z");
+        var listB = (await Client.GetFromJsonAsync<List<RoutineEventDto>>($"/routine-events?updatedSince={since}"))!;
         listB.Should().HaveCount(1);
         listB[0].Title.Should().Be("Do usuário B");
 
-        // volta pro A
         Client.DefaultRequestHeaders.Authorization = tokenA;
-        var listA = (await Client.GetFromJsonAsync<List<RoutineEventDto>>("/routine-events"))!;
+        var listA = (await Client.GetFromJsonAsync<List<RoutineEventDto>>($"/routine-events?updatedSince={since}"))!;
         listA.Should().HaveCount(1);
         listA[0].Title.Should().Be("Do usuário A");
     }
@@ -194,7 +215,7 @@ public class RoutineEventsEndpointsTests : IntegrationTestBase
             StartTime = new TimeSpan(9, 0, 0),
             EndTime = new TimeSpan(10, 0, 0),
             DaysOfWeek = new[] { 2, 4 },
-            IsActive = false
+            Color = "#7C3AED"
         };
 
         var response = await Client.PutAsJsonAsync($"/routine-events/{created.Id}", update);
@@ -202,7 +223,7 @@ public class RoutineEventsEndpointsTests : IntegrationTestBase
 
         var body = await response.Content.ReadFromJsonAsync<RoutineEventDto>();
         body!.Title.Should().Be("Atualizado");
-        body.IsActive.Should().BeFalse();
+        body.Color.Should().Be("#7C3AED");
         body.DaysOfWeek.Should().BeEquivalentTo(new[] { 2, 4 });
     }
 
@@ -221,8 +242,7 @@ public class RoutineEventsEndpointsTests : IntegrationTestBase
             {
                 Title = "hack",
                 StartTime = new TimeSpan(7, 0, 0),
-                DaysOfWeek = new[] { 1 },
-                IsActive = true
+                DaysOfWeek = new[] { 1 }
             });
 
         response.StatusCode.Should().Be(HttpStatusCode.NotFound);

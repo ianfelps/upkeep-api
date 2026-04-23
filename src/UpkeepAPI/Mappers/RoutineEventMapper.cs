@@ -15,7 +15,7 @@ public static class RoutineEventMapper
         DaysOfWeek = routineEvent.DaysOfWeek,
         EventDate = routineEvent.EventDate,
         EventType = routineEvent.EventDate.HasValue ? "once" : "recurring",
-        IsActive = routineEvent.IsActive,
+        Color = routineEvent.Color,
         UserId = routineEvent.UserId,
         CreatedAt = routineEvent.CreatedAt,
         UpdatedAt = routineEvent.UpdatedAt
