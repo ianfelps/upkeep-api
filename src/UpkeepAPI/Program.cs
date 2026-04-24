@@ -72,6 +72,8 @@ builder.Services.AddRateLimiter(options =>
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddScoped<IRoutineEventService, RoutineEventService>();
+builder.Services.AddScoped<IHabitService, HabitService>();
+builder.Services.AddScoped<IHabitLogService, HabitLogService>();
 
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();

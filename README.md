@@ -19,7 +19,7 @@ Backend do aplicativo Upkeep. API REST em C# / .NET 8 com autenticação JWT e b
 upkeep-api/
 ├── src/UpkeepAPI/          → Projeto principal da API
 │   ├── Controllers/        → Rotas HTTP com annotations Swagger
-│   ├── DTOs/               → Contratos de entrada e saída (Auth/, User/, RoutineEvent/)
+│   ├── DTOs/               → Contratos de entrada e saída (Auth/, User/, RoutineEvent/, Habit/, HabitLog/)
 │   ├── Mappers/            → Extensões de mapeamento Model → DTO
 │   ├── Models/             → Entidades do domínio (users, habits, routines)
 │   ├── Services/           → Regras de negócio (Interfaces/ + implementações)
@@ -27,7 +27,7 @@ upkeep-api/
 │   └── Migrations/         → Migrations do EF Core
 └── tests/UpkeepAPI.Tests/  → Testes de integração
     ├── Fixtures/           → ApiFactory (WebApplicationFactory + Testcontainers)
-    └── Integration/        → Suítes por endpoint (Health, Auth, Users, RoutineEvents, RefreshToken)
+    └── Integration/        → Suítes por endpoint (Health, Auth, Users, RoutineEvents, RefreshToken, Habits, HabitLogs)
 ```
 
 ## Configuração
@@ -167,6 +167,39 @@ O par **access token + refresh token** foi desenhado para uso offline prolongado
 #### Sincronização offline-first
 
 O futuro frontend é offline-first: lê/escreve em banco local e sincroniza com a API quando online. Para suportar isso, todos os recursos expõem `createdAt` e `updatedAt` em UTC, e `GET /routine-events?updatedSince=<iso8601>` retorna apenas eventos com `updatedAt > updatedSince` (delta sync). Ids são gerados pelo servidor — o cliente mapeia id local → id remoto ao receber a resposta do POST. Conflitos seguem last-write-wins via `updatedAt`. Deletes atuais são hard; tombstones podem ser adicionados no futuro se a propagação de exclusões entre dispositivos se tornar necessária.
+
+### Habits
+
+Hábitos vinculados ao usuário autenticado. Cada hábito pode ser opcionalmente vinculado a eventos de rotina via `routineEventIds`.
+
+**Frequências (`frequencyType`):** `Daily`, `Weekly`, `Monthly`.
+
+| Método | Rota | Auth | Descrição |
+|---|---|---|---|
+| GET | `/habits` | JWT | Listar hábitos do usuário (`?updatedSince=` para delta sync) |
+| GET | `/habits/{id}` | JWT | Obter um hábito específico |
+| GET | `/habits/heatmap` | JWT | Heatmap de todos os hábitos (`?from=&to=`, padrão últimos 365 dias) |
+| POST | `/habits` | JWT | Criar hábito (com `routineEventIds[]` opcional) |
+| PUT | `/habits/{id}` | JWT | Atualizar hábito (substitui vínculos de rotina atomicamente) |
+| DELETE | `/habits/{id}` | JWT | Excluir hábito (cascata: logs + vínculos) |
+
+**Resposta do `GET /habits/heatmap`:** `[{ date, completedCount, totalHabits }]` — apenas dias com ao menos um log são retornados.
+
+### Habit Logs
+
+Registros de execução de um hábito por data. No máximo um registro por `(habitId, targetDate)`.
+
+**Status (`status`):** `Completed`, `Skipped`, `Missed`.
+
+| Método | Rota | Auth | Descrição |
+|---|---|---|---|
+| GET | `/habits/{habitId}/logs` | JWT | Listar logs (`?from=&to=` ou `?updatedSince=`, padrão hoje) |
+| GET | `/habits/{habitId}/logs/{logId}` | JWT | Obter um log específico |
+| POST | `/habits/{habitId}/logs` | JWT | Registrar execução para uma data |
+| PUT | `/habits/{habitId}/logs/{logId}` | JWT | Atualizar status/notas/XP de um log |
+| DELETE | `/habits/{habitId}/logs/{logId}` | JWT | Excluir log |
+
+`completedAt` é definido automaticamente ao criar/atualizar para `Completed`, e limpo ao mudar para outro status. Serve como fonte de dados para o heatmap individual do hábito via `?from=&to=`.
 
 ### Health
 
