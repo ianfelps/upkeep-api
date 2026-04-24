@@ -16,11 +16,13 @@ public class AuthService : IAuthService
 {
     private readonly AppDbContext _context;
     private readonly IConfiguration _configuration;
+    private readonly IUserProgressService _userProgressService;
 
-    public AuthService(AppDbContext context, IConfiguration configuration)
+    public AuthService(AppDbContext context, IConfiguration configuration, IUserProgressService userProgressService)
     {
         _context = context;
         _configuration = configuration;
+        _userProgressService = userProgressService;
     }
 
     public async Task<AuthResponseDto> RegisterAsync(RegisterRequestDto dto)
@@ -38,6 +40,8 @@ public class AuthService : IAuthService
 
         _context.Users.Add(user);
         await _context.SaveChangesAsync();
+
+        await _userProgressService.SeedAsync(user.Id);
 
         return await BuildAuthResponseAsync(user);
     }

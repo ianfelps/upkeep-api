@@ -19,13 +19,21 @@ public class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         builder.UseEnvironment("Testing");
+
+        builder.ConfigureServices(services =>
+        {
+            var descriptor = services.SingleOrDefault(d => d.ServiceType == typeof(DbContextOptions<AppDbContext>));
+            if (descriptor is not null) services.Remove(descriptor);
+
+            services.AddDbContext<AppDbContext>(options =>
+                options.UseNpgsql(_dbContainer.GetConnectionString()));
+        });
     }
 
     public async Task InitializeAsync()
     {
         await _dbContainer.StartAsync();
 
-        Environment.SetEnvironmentVariable("ConnectionStrings__DefaultConnection", _dbContainer.GetConnectionString());
         Environment.SetEnvironmentVariable("Jwt__SecretKey", "test-secret-key-with-at-least-32-characters-for-hs256");
         Environment.SetEnvironmentVariable("Jwt__Issuer", "UpkeepAPI.Tests");
         Environment.SetEnvironmentVariable("Jwt__Audience", "UpkeepAPI.Tests");

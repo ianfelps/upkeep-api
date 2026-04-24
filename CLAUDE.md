@@ -11,15 +11,15 @@ Backend for the Upkeep app, built with C# / .NET 8. REST API with JWT authentica
 ```
 src/UpkeepAPI/
   Controllers/    → HTTP layer: routing, request/response, Swagger annotations
-  DTOs/           → Input/output contracts (Auth/, User/, RoutineEvent/)
+  DTOs/           → Input/output contracts (Auth/, User/, RoutineEvent/, Habit/, HabitLog/, UserProgress/)
   Mappers/        → Static extension methods: Model → DTO
-  Models/         → Domain entities (User + Habit/Routine graph), all inherit from BaseEntity
+  Models/         → Domain entities (User + Habit/Routine graph + UserProgress + Achievements), all inherit from BaseEntity
   Services/       → Business logic (Interfaces/ + implementations)
   Data/           → AppDbContext: EF Core config + auto timestamps
   Migrations/     → EF Core migrations
 tests/UpkeepAPI.Tests/
   Fixtures/       → ApiFactory (WebApplicationFactory + Testcontainers Postgres)
-  Integration/    → Endpoint tests (Health, Auth, Users, RoutineEvents, RefreshToken)
+  Integration/    → Endpoint tests (Health, Auth, Users, RoutineEvents, RefreshToken, Habits, HabitLogs, UserProgress, Achievements)
 ```
 
 All code in English. User-facing messages (API responses, validation errors) in Portuguese.
@@ -56,7 +56,9 @@ dotnet ef database update --project src/UpkeepAPI         # Apply migrations
 - `GET /habits/heatmap` returns `[{ date, completedCount, totalHabits }]` — only days with at least one log entry. Defaults to last 365 days. `totalHabits` = count of active habits at query time. Individual habit heatmap: use `GET /habits/{id}/logs?from=&to=`.
 - All timestamps are stored and returned in UTC. Clients are responsible for converting to the user's local timezone for display.
 - Auth uses **access token (short-lived JWT) + refresh token (long-lived, 60 days default)**. Refresh tokens are persisted as SHA-256 hashes in `RefreshTokens` with `RevokedAt`. `POST /auth/refresh` rotates (revokes the old, issues a new pair) — never keep an old refresh token alive after refresh. `ClockSkew` is 5 min to tolerate device clock drift offline. `Jwt__RefreshExpirationInDays` env var controls refresh lifetime.
-- Tests use Testcontainers with `postgres:16-alpine`; one container per test run, `TRUNCATE` between tests via `ApiFactory.ResetDatabaseAsync`
+- Achievements are predefined in code (`Models/AchievementDefinitions.cs`): `AchievementKey` enum + `AchievementDefinition` record + static `Achievements` class (list + `IsUnlocked` switch). `UserAchievement` model stores unlocked achievements (`UserId`, `Key` stored as string, unique index on `(UserId, Key)`, cascade delete). `IAchievementService.CheckAndUnlockAsync` is called at the end of `UserProgressService.GetProgressAsync` — it loads already-unlocked keys, computes which new ones qualify, and bulk-inserts only the new ones. `GET /users/me/achievements` returns all 14 achievements (locked + unlocked) with `isUnlocked` and `unlockedAt` (`CreatedAt` of the `UserAchievement` row). Adding new achievements requires only: adding a value to `AchievementKey`, an entry in `Achievements.All`, and a case in `Achievements.IsUnlocked` — no migration needed.
+- `UserProgress` tracks gamification and stats per user: `CurrentLevel`, `TotalXP`, `CurrentStreak`, `LongestStreak`, `LastActivity`. One row per user (unique FK, cascade delete). Created with zeros on register via `IUserProgressService.SeedAsync`. `GET /users/me/progress` recomputes everything from `HabitLogs` and upserts the row — no manual update needed anywhere else. `CurrentLevel` = `floor(sqrt(TotalXP / 50)) + 1` (min 1). `CurrentStreak` is live only if the most recent completed date is today or yesterday. All stats not persisted in the model (`TotalHabitsActive`, `TotalLogsCompleted`, `CompletionRateLast7Days`, `CompletionRateLast30Days`) are computed on demand and returned in the DTO but not stored.
+- Tests use Testcontainers with `postgres:16-alpine`; one container per test run, `TRUNCATE` between tests via `ApiFactory.ResetDatabaseAsync`. `ApiFactory.ConfigureWebHost` replaces `DbContextOptions<AppDbContext>` directly via `ConfigureServices` — do NOT use `Environment.SetEnvironmentVariable` for the connection string, as `Env.TraversePath().Load()` in `Program.cs` would overwrite it with the Supabase value.
 
 ## Setup
 

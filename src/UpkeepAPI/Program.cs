@@ -74,6 +74,8 @@ builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddScoped<IRoutineEventService, RoutineEventService>();
 builder.Services.AddScoped<IHabitService, HabitService>();
 builder.Services.AddScoped<IHabitLogService, HabitLogService>();
+builder.Services.AddScoped<IUserProgressService, UserProgressService>();
+builder.Services.AddScoped<IAchievementService, AchievementService>();
 
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();

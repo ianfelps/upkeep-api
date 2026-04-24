@@ -14,6 +14,7 @@ public class AppDbContext : DbContext
     public DbSet<RoutineEvent> RoutineEvents => Set<RoutineEvent>();
     public DbSet<HabitRoutineLink> HabitRoutineLinks => Set<HabitRoutineLink>();
     public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
+    public DbSet<UserAchievement> UserAchievements => Set<UserAchievement>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -85,6 +86,16 @@ public class AppDbContext : DbContext
             entity.HasOne(rt => rt.User)
                   .WithMany()
                   .HasForeignKey(rt => rt.UserId)
+                  .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<UserAchievement>(entity =>
+        {
+            entity.HasIndex(ua => new { ua.UserId, ua.Key }).IsUnique();
+            entity.Property(ua => ua.Key).HasConversion<string>();
+            entity.HasOne(ua => ua.User)
+                  .WithMany()
+                  .HasForeignKey(ua => ua.UserId)
                   .OnDelete(DeleteBehavior.Cascade);
         });
 

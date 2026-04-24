@@ -1,6 +1,8 @@
 # upkeep-api
 
-Backend do aplicativo Upkeep. API REST em C# / .NET 8 com autenticação JWT e banco de dados PostgreSQL via Supabase.
+Backend do **Upkeep** — aplicativo de produtividade focado em construção de hábitos e organização da rotina. O Upkeep ajuda o usuário a criar e acompanhar hábitos diários, registrar execuções com XP, visualizar progresso ao longo do tempo e organizar eventos recorrentes de rotina.
+
+A API é construída em C# / .NET 8, com autenticação JWT, banco de dados PostgreSQL via Supabase e suporte a sincronização offline-first.
 
 ## Tecnologias
 
@@ -19,15 +21,15 @@ Backend do aplicativo Upkeep. API REST em C# / .NET 8 com autenticação JWT e b
 upkeep-api/
 ├── src/UpkeepAPI/          → Projeto principal da API
 │   ├── Controllers/        → Rotas HTTP com annotations Swagger
-│   ├── DTOs/               → Contratos de entrada e saída (Auth/, User/, RoutineEvent/, Habit/, HabitLog/)
+│   ├── DTOs/               → Contratos de entrada e saída (Auth/, User/, RoutineEvent/, Habit/, HabitLog/, UserProgress/)
 │   ├── Mappers/            → Extensões de mapeamento Model → DTO
-│   ├── Models/             → Entidades do domínio (users, habits, routines)
+│   ├── Models/             → Entidades do domínio (users, habits, routines, progress, achievements)
 │   ├── Services/           → Regras de negócio (Interfaces/ + implementações)
 │   ├── Data/               → AppDbContext com timestamps automáticos
 │   └── Migrations/         → Migrations do EF Core
 └── tests/UpkeepAPI.Tests/  → Testes de integração
     ├── Fixtures/           → ApiFactory (WebApplicationFactory + Testcontainers)
-    └── Integration/        → Suítes por endpoint (Health, Auth, Users, RoutineEvents, RefreshToken, Habits, HabitLogs)
+    └── Integration/        → Suítes por endpoint (Health, Auth, Users, RoutineEvents, RefreshToken, Habits, HabitLogs, UserProgress, Achievements)
 ```
 
 ## Configuração
@@ -124,6 +126,8 @@ Formato padrão para erros de negócio:
 | Método | Rota | Auth | Descrição |
 |---|---|---|---|
 | GET | `/users/me` | JWT | Obter dados do usuário autenticado |
+| GET | `/users/me/progress` | JWT | Obter dashboard de progresso (XP, nível, streaks, taxas de conclusão) |
+| GET | `/users/me/achievements` | JWT | Listar todas as conquistas (desbloqueadas + bloqueadas) |
 | PUT | `/users/me` | JWT | Atualizar nome e e-mail |
 | PATCH | `/users/me/password` | JWT | Alterar senha |
 | DELETE | `/users/me` | JWT | Excluir conta |
@@ -200,6 +204,58 @@ Registros de execução de um hábito por data. No máximo um registro por `(hab
 | DELETE | `/habits/{habitId}/logs/{logId}` | JWT | Excluir log |
 
 `completedAt` é definido automaticamente ao criar/atualizar para `Completed`, e limpo ao mudar para outro status. Serve como fonte de dados para o heatmap individual do hábito via `?from=&to=`.
+
+### User Progress
+
+Dashboard de progresso do usuário autenticado. Calculado em tempo real a partir dos `HabitLogs` e persistido para consultas futuras.
+
+| Método | Rota | Auth | Descrição |
+|---|---|---|---|
+| GET | `/users/me/progress` | JWT | Retornar estatísticas de progresso do usuário |
+
+**Campos retornados:**
+
+| Campo | Descrição |
+|---|---|
+| `currentLevel` | Nível atual, derivado de XP: `floor(sqrt(totalXP / 50)) + 1` |
+| `totalXP` | Soma de `earnedXP` de todos os logs com `Completed` |
+| `currentStreak` | Dias consecutivos com ao menos um log `Completed` (encerra hoje ou ontem) |
+| `longestStreak` | Maior sequência consecutiva histórica |
+| `lastActivity` | Data (meia-noite UTC) do último log `Completed` |
+| `totalHabitsActive` | Quantidade de hábitos ativos no momento |
+| `totalLogsCompleted` | Total de logs `Completed` de todos os tempos |
+| `completionRateLast7Days` | Taxa de conclusão nos últimos 7 dias (0–1, 3 casas decimais) |
+| `completionRateLast30Days` | Taxa de conclusão nos últimos 30 dias (0–1, 3 casas decimais) |
+| `updatedAt` | Timestamp UTC da última atualização do registro de progresso |
+
+### Achievements
+
+Conquistas predefinidas desbloqueadas automaticamente a cada chamada a `GET /users/me/progress`, com base nas estatísticas do usuário.
+
+| Método | Rota | Auth | Descrição |
+|---|---|---|---|
+| GET | `/users/me/achievements` | JWT | Listar todas as conquistas com status de desbloqueio |
+
+**Conquistas disponíveis:**
+
+| Chave | Título | Condição |
+|---|---|---|
+| `FirstHabit` | Primeiro Hábito | Criou ao menos 1 hábito |
+| `FirstLog` | Primeiro Passo | Completou ao menos 1 hábito |
+| `Logs10` | Ganhando Ritmo | 10 hábitos completados |
+| `Logs50` | Consistente | 50 hábitos completados |
+| `Logs100` | Centenário | 100 hábitos completados |
+| `Logs500` | Dedicado | 500 hábitos completados |
+| `Streak3` | Começando Bem | Sequência de 3 dias |
+| `Streak7` | Uma Semana | Sequência de 7 dias |
+| `Streak14` | Quinzena | Sequência de 14 dias |
+| `Streak30` | Mês Completo | Sequência de 30 dias |
+| `Streak100` | Centurião | Sequência de 100 dias |
+| `Level5` | Experiente | Nível 5 |
+| `Level10` | Veterano | Nível 10 |
+| `Level25` | Mestre | Nível 25 |
+
+Cada item retornado inclui `key`, `title`, `description`, `icon` (nome Lucide), `isUnlocked` e `unlockedAt` (UTC, `null` se ainda bloqueada).
 
 ### Health
 

@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Swashbuckle.AspNetCore.Annotations;
 using UpkeepAPI.DTOs.User;
+using UpkeepAPI.DTOs.UserProgress;
 using UpkeepAPI.Services.Interfaces;
 
 namespace UpkeepAPI.Controllers;
@@ -15,10 +16,14 @@ namespace UpkeepAPI.Controllers;
 public class UsersController : ControllerBase
 {
     private readonly IUserService _userService;
+    private readonly IUserProgressService _userProgressService;
+    private readonly IAchievementService _achievementService;
 
-    public UsersController(IUserService userService)
+    public UsersController(IUserService userService, IUserProgressService userProgressService, IAchievementService achievementService)
     {
         _userService = userService;
+        _userProgressService = userProgressService;
+        _achievementService = achievementService;
     }
 
     private Guid GetCurrentUserId()
@@ -105,6 +110,34 @@ public class UsersController : ControllerBase
         {
             return BadRequest(new { message = ex.Message });
         }
+    }
+
+    [HttpGet("me/progress")]
+    [SwaggerOperation(
+        Summary = "Obter progresso do usuário autenticado",
+        Description = "Retorna estatísticas computadas de XP, nível, sequências e taxa de conclusão."
+    )]
+    [SwaggerResponse(StatusCodes.Status200OK, "Progresso retornado com sucesso", typeof(UserProgressDto))]
+    [SwaggerResponse(StatusCodes.Status401Unauthorized, "Token ausente ou inválido")]
+    public async Task<IActionResult> GetMyProgress()
+    {
+        var userId = GetCurrentUserId();
+        var progress = await _userProgressService.GetProgressAsync(userId);
+        return Ok(progress);
+    }
+
+    [HttpGet("me/achievements")]
+    [SwaggerOperation(
+        Summary = "Obter conquistas do usuário autenticado",
+        Description = "Retorna todas as conquistas disponíveis, indicando quais foram desbloqueadas e quando."
+    )]
+    [SwaggerResponse(StatusCodes.Status200OK, "Conquistas retornadas com sucesso", typeof(List<AchievementDto>))]
+    [SwaggerResponse(StatusCodes.Status401Unauthorized, "Token ausente ou inválido")]
+    public async Task<IActionResult> GetMyAchievements()
+    {
+        var userId = GetCurrentUserId();
+        var achievements = await _achievementService.GetAllAsync(userId);
+        return Ok(achievements);
     }
 
     [HttpDelete("me")]
