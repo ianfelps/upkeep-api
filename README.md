@@ -1,4 +1,4 @@
-# upkeep-api
+# Upkeep API
 
 Backend do **Upkeep** — aplicativo de produtividade focado em construção de hábitos e organização da rotina. O Upkeep ajuda o usuário a criar e acompanhar hábitos diários, registrar execuções com XP, visualizar progresso ao longo do tempo e organizar eventos recorrentes de rotina.
 
@@ -38,7 +38,7 @@ upkeep-api/
 
 - [.NET 8 SDK](https://dotnet.microsoft.com/download)
 - [Docker](https://www.docker.com/) (necessário para os testes de integração)
-- Conta no [Supabase](https://supabase.com/)
+- Conta no [Supabase](https://supabase.com/) (ou qualquer PostgreSQL, mas as instruções abaixo assumem Supabase)
 
 ### 2. Clonar e restaurar dependências
 
@@ -170,7 +170,7 @@ O par **access token + refresh token** foi desenhado para uso offline prolongado
 
 #### Sincronização offline-first
 
-O futuro frontend é offline-first: lê/escreve em banco local e sincroniza com a API quando online. Para suportar isso, todos os recursos expõem `createdAt` e `updatedAt` em UTC, e `GET /routine-events?updatedSince=<iso8601>` retorna apenas eventos com `updatedAt > updatedSince` (delta sync). Ids são gerados pelo servidor — o cliente mapeia id local → id remoto ao receber a resposta do POST. Conflitos seguem last-write-wins via `updatedAt`. Deletes atuais são hard; tombstones podem ser adicionados no futuro se a propagação de exclusões entre dispositivos se tornar necessária.
+O frontend é offline-first: lê/escreve em banco local e sincroniza com a API quando online. Para suportar isso, todos os recursos expõem `createdAt` e `updatedAt` em UTC, e `GET /routine-events?updatedSince=<iso8601>` retorna apenas eventos com `updatedAt > updatedSince` (delta sync). Ids são gerados pelo servidor — o cliente mapeia id local → id remoto ao receber a resposta do POST. Conflitos seguem last-write-wins via `updatedAt`. Deletes atuais são hard; tombstones podem ser adicionados no futuro se a propagação de exclusões entre dispositivos se tornar necessária.
 
 ### Habits
 
