@@ -62,7 +62,7 @@ Edite o `.env` na raiz do repositório:
 # Supabase Dashboard > Settings > Database
 ConnectionStrings__DefaultConnection=Host=db.xxxx.supabase.co;Port=5432;Database=postgres;Username=postgres;Password=SUA_SENHA;SSL Mode=Require;Trust Server Certificate=true
 
-# Chave secreta JWT (mínimo 32 caracteres)
+# Chave secreta JWT (mínimo 32 bytes UTF-8 — validado no startup)
 Jwt__SecretKey=sua-chave-secreta-com-pelo-menos-32-caracteres
 Jwt__Issuer=upkeep-api
 Jwt__Audience=upkeep-app
@@ -128,9 +128,11 @@ Formato padrão para erros de negócio:
 | GET | `/users/me` | JWT | Obter dados do usuário autenticado |
 | GET | `/users/me/progress` | JWT | Obter dashboard de progresso (XP, nível, streaks, taxas de conclusão) |
 | GET | `/users/me/achievements` | JWT | Listar todas as conquistas (desbloqueadas + bloqueadas) |
-| PUT | `/users/me` | JWT | Atualizar nome e e-mail |
-| PATCH | `/users/me/password` | JWT | Alterar senha |
-| DELETE | `/users/me` | JWT | Excluir conta |
+| PUT | `/users/me` | JWT | Atualizar nome e e-mail (exige `currentPassword`; troca de e-mail revoga todos os refresh tokens) |
+| PATCH | `/users/me/password` | JWT | Alterar senha (exige `currentPassword`; revoga todos os refresh tokens) |
+| DELETE | `/users/me` | JWT | Excluir conta (exige `currentPassword` no corpo) |
+
+**Política de senha:** mínimo 8 caracteres, máximo 72 bytes (limite do BCrypt). Aplicada em registro e troca de senha.
 
 ### Routine Events
 
@@ -165,6 +167,8 @@ O par **access token + refresh token** foi desenhado para uso offline prolongado
 
 - **Access token (JWT)**: curta duração (padrão 2h). `ClockSkew` de 5 min tolera dessincronização do relógio do dispositivo quando offline.
 - **Refresh token**: longa duração (padrão 60 dias). Armazenado no banco como hash SHA-256, com `RevokedAt` para revogação. Use `POST /auth/refresh` para trocar por um novo par — o refresh token antigo é **revogado imediatamente (rotação)**, então tentar reutilizá-lo retorna 401.
+- **Detecção de reuso (token family)**: cada sessão tem um `FamilyId`. A rotação preserva o mesmo `FamilyId` e encadeia tokens via `ReplacedByTokenId`. Se um token já revogado **e já rotacionado** for replayado, toda a família é revogada — sinal de que o token foi comprometido. O atacante perde acesso; vítima precisa logar novamente.
+- **Troca de senha ou e-mail**: revoga **todos** os refresh tokens ativos do usuário. O dispositivo atual precisa logar novamente.
 - **Logout**: `POST /auth/logout` revoga o refresh token do dispositivo. O access token permanece válido até expirar — mantenha-o curto.
 - **Dispositivo offline volta online**: o cliente tenta a requisição; se receber 401, chama `/auth/refresh` com o refresh token salvo e reenvia.
 

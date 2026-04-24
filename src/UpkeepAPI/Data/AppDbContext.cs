@@ -83,6 +83,7 @@ public class AppDbContext : DbContext
         {
             entity.Property(rt => rt.TokenHash).IsRequired().HasMaxLength(128);
             entity.HasIndex(rt => rt.TokenHash).IsUnique();
+            entity.HasIndex(rt => rt.FamilyId);
             entity.HasOne(rt => rt.User)
                   .WithMany()
                   .HasForeignKey(rt => rt.UserId)

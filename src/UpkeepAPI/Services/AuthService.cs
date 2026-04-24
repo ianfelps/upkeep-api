@@ -62,13 +62,64 @@ public class AuthService : IAuthService
             .Include(rt => rt.User)
             .FirstOrDefaultAsync(rt => rt.TokenHash == hash);
 
-        if (stored is null || stored.RevokedAt is not null || stored.ExpiresAt <= DateTime.UtcNow)
+        if (stored is null || stored.ExpiresAt <= DateTime.UtcNow)
             throw new UnauthorizedAccessException("Refresh token inválido ou expirado.");
 
-        stored.RevokedAt = DateTime.UtcNow;
+        if (stored.RevokedAt is not null)
+        {
+            if (stored.ReplacedByTokenId is not null)
+                await RevokeFamilyAsync(stored.FamilyId);
+
+            throw new UnauthorizedAccessException("Refresh token inválido ou expirado.");
+        }
+
+        var now = DateTime.UtcNow;
+        var (newToken, newExpiresAt, newId) = await IssueRefreshTokenAsync(stored.UserId, stored.FamilyId);
+
+        stored.RevokedAt = now;
+        stored.ReplacedByTokenId = newId;
         await _context.SaveChangesAsync();
 
-        return await BuildAuthResponseAsync(stored.User);
+        var (accessToken, accessExpiresAt) = GenerateAccessToken(stored.User);
+
+        return new AuthResponseDto
+        {
+            Token = accessToken,
+            TokenExpiresAt = accessExpiresAt,
+            RefreshToken = newToken,
+            RefreshTokenExpiresAt = newExpiresAt,
+            User = stored.User.ToDto()
+        };
+    }
+
+    public async Task RevokeAllUserTokensAsync(Guid userId)
+    {
+        var active = await _context.RefreshTokens
+            .Where(rt => rt.UserId == userId && rt.RevokedAt == null)
+            .ToListAsync();
+
+        if (active.Count == 0) return;
+
+        var now = DateTime.UtcNow;
+        foreach (var token in active)
+            token.RevokedAt = now;
+
+        await _context.SaveChangesAsync();
+    }
+
+    private async Task RevokeFamilyAsync(Guid familyId)
+    {
+        var active = await _context.RefreshTokens
+            .Where(rt => rt.FamilyId == familyId && rt.RevokedAt == null)
+            .ToListAsync();
+
+        if (active.Count == 0) return;
+
+        var now = DateTime.UtcNow;
+        foreach (var token in active)
+            token.RevokedAt = now;
+
+        await _context.SaveChangesAsync();
     }
 
     public async Task LogoutAsync(string refreshToken)
@@ -86,7 +137,7 @@ public class AuthService : IAuthService
     private async Task<AuthResponseDto> BuildAuthResponseAsync(User user)
     {
         var (token, tokenExpiresAt) = GenerateAccessToken(user);
-        var (refreshToken, refreshExpiresAt) = await IssueRefreshTokenAsync(user.Id);
+        var (refreshToken, refreshExpiresAt, _) = await IssueRefreshTokenAsync(user.Id, Guid.NewGuid());
 
         return new AuthResponseDto
         {
@@ -124,22 +175,24 @@ public class AuthService : IAuthService
         return (new JwtSecurityTokenHandler().WriteToken(token), expiration);
     }
 
-    private async Task<(string Token, DateTime ExpiresAt)> IssueRefreshTokenAsync(Guid userId)
+    private async Task<(string Token, DateTime ExpiresAt, Guid Id)> IssueRefreshTokenAsync(Guid userId, Guid familyId)
     {
         var jwtSettings = _configuration.GetSection("Jwt");
         var days = double.Parse(jwtSettings["RefreshExpirationInDays"] ?? "60");
         var expiresAt = DateTime.UtcNow.AddDays(days);
 
         var raw = GenerateRefreshTokenString();
-        _context.RefreshTokens.Add(new RefreshToken
+        var entity = new RefreshToken
         {
             UserId = userId,
             TokenHash = HashToken(raw),
-            ExpiresAt = expiresAt
-        });
+            ExpiresAt = expiresAt,
+            FamilyId = familyId
+        };
+        _context.RefreshTokens.Add(entity);
         await _context.SaveChangesAsync();
 
-        return (raw, expiresAt);
+        return (raw, expiresAt, entity.Id);
     }
 
     private static string GenerateRefreshTokenString()

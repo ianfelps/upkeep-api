@@ -79,6 +79,10 @@ public class UsersController : ControllerBase
         {
             return NotFound(new { message = ex.Message });
         }
+        catch (UnauthorizedAccessException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
         catch (InvalidOperationException ex)
         {
             return Conflict(new { message = ex.Message });
@@ -143,22 +147,27 @@ public class UsersController : ControllerBase
     [HttpDelete("me")]
     [SwaggerOperation(
         Summary = "Excluir conta do usuário autenticado",
-        Description = "Remove permanentemente a conta do usuário. Esta ação não pode ser desfeita."
+        Description = "Remove permanentemente a conta do usuário. Requer confirmação da senha atual. Esta ação não pode ser desfeita."
     )]
     [SwaggerResponse(StatusCodes.Status204NoContent, "Conta excluída com sucesso")]
+    [SwaggerResponse(StatusCodes.Status400BadRequest, "Senha atual incorreta")]
     [SwaggerResponse(StatusCodes.Status401Unauthorized, "Token ausente ou inválido")]
     [SwaggerResponse(StatusCodes.Status404NotFound, "Usuário não encontrado")]
-    public async Task<IActionResult> DeleteMe()
+    public async Task<IActionResult> DeleteMe([FromBody] DeleteAccountDto dto)
     {
         try
         {
             var userId = GetCurrentUserId();
-            await _userService.DeleteAsync(userId);
+            await _userService.DeleteAsync(userId, dto);
             return NoContent();
         }
         catch (KeyNotFoundException ex)
         {
             return NotFound(new { message = ex.Message });
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            return BadRequest(new { message = ex.Message });
         }
     }
 }

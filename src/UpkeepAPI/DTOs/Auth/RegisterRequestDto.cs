@@ -13,6 +13,7 @@ public class RegisterRequestDto
     public string Email { get; set; } = string.Empty;
 
     [Required(ErrorMessage = "A senha é obrigatória.")]
-    [MinLength(6, ErrorMessage = "A senha deve ter no mínimo 6 caracteres.")]
+    [MinLength(8, ErrorMessage = "A senha deve ter no mínimo 8 caracteres.")]
+    [MaxLength(72, ErrorMessage = "A senha deve ter no máximo 72 caracteres.")]
     public string Password { get; set; } = string.Empty;
 }

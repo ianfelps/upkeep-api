@@ -9,10 +9,12 @@ namespace UpkeepAPI.Services;
 public class UserService : IUserService
 {
     private readonly AppDbContext _context;
+    private readonly IAuthService _authService;
 
-    public UserService(AppDbContext context)
+    public UserService(AppDbContext context, IAuthService authService)
     {
         _context = context;
+        _authService = authService;
     }
 
     public async Task<UserDto> GetByIdAsync(Guid id)
@@ -28,16 +30,28 @@ public class UserService : IUserService
         var user = await _context.Users.FindAsync(id)
             ?? throw new KeyNotFoundException("Usuário não encontrado.");
 
-        var emailTaken = await _context.Users
-            .AnyAsync(u => u.Email == dto.Email.ToLower() && u.Id != id);
+        if (!BCrypt.Net.BCrypt.Verify(dto.CurrentPassword, user.PasswordHash))
+            throw new UnauthorizedAccessException("Senha atual incorreta.");
 
-        if (emailTaken)
-            throw new InvalidOperationException("E-mail já está em uso por outro usuário.");
+        var newEmail = dto.Email.ToLower().Trim();
+        var emailChanged = !string.Equals(user.Email, newEmail, StringComparison.Ordinal);
+
+        if (emailChanged)
+        {
+            var emailTaken = await _context.Users
+                .AnyAsync(u => u.Email == newEmail && u.Id != id);
+
+            if (emailTaken)
+                throw new InvalidOperationException("E-mail já está em uso por outro usuário.");
+        }
 
         user.Name = dto.Name.Trim();
-        user.Email = dto.Email.ToLower().Trim();
+        user.Email = newEmail;
 
         await _context.SaveChangesAsync();
+
+        if (emailChanged)
+            await _authService.RevokeAllUserTokensAsync(id);
 
         return user.ToDto();
     }
@@ -53,12 +67,17 @@ public class UserService : IUserService
         user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(dto.NewPassword);
 
         await _context.SaveChangesAsync();
+
+        await _authService.RevokeAllUserTokensAsync(id);
     }
 
-    public async Task DeleteAsync(Guid id)
+    public async Task DeleteAsync(Guid id, DeleteAccountDto dto)
     {
         var user = await _context.Users.FindAsync(id)
             ?? throw new KeyNotFoundException("Usuário não encontrado.");
+
+        if (!BCrypt.Net.BCrypt.Verify(dto.CurrentPassword, user.PasswordHash))
+            throw new UnauthorizedAccessException("Senha atual incorreta.");
 
         _context.Users.Remove(user);
         await _context.SaveChangesAsync();
