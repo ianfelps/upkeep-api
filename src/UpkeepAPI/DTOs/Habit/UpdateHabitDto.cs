@@ -13,7 +13,7 @@ public class UpdateHabitDto : IValidatableObject
     public string Description { get; set; } = string.Empty;
 
     [MaxLength(50, ErrorMessage = "O ícone deve ter no máximo 50 caracteres.")]
-    public string LucideIcon { get; set; } = string.Empty;
+    public string Icon { get; set; } = string.Empty;
 
     [Required(ErrorMessage = "A cor é obrigatória.")]
     [MaxLength(7, ErrorMessage = "A cor deve ter no máximo 7 caracteres.")]

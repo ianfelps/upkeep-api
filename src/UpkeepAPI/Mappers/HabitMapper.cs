@@ -10,7 +10,7 @@ public static class HabitMapper
         Id = habit.Id,
         Title = habit.Title,
         Description = habit.Description,
-        LucideIcon = habit.LucideIcon,
+        Icon = habit.Icon,
         Color = habit.Color,
         FrequencyType = habit.FrequencyType.ToString(),
         TargetValue = habit.TargetValue,

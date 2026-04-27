@@ -5,7 +5,7 @@ public class HabitDto
     public Guid Id { get; set; }
     public string Title { get; set; } = string.Empty;
     public string Description { get; set; } = string.Empty;
-    public string LucideIcon { get; set; } = string.Empty;
+    public string Icon { get; set; } = string.Empty;
     public string Color { get; set; } = string.Empty;
     public string FrequencyType { get; set; } = string.Empty;
     public int TargetValue { get; set; }

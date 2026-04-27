@@ -18,7 +18,7 @@ public class AchievementsEndpointsTests : IntegrationTestBase
         {
             Title = title,
             Description = "Descrição",
-            LucideIcon = "star",
+            Icon = "star",
             Color = "#2563EB",
             FrequencyType = HabitFrequencyType.Daily,
             TargetValue = 1

@@ -61,7 +61,7 @@ public class HabitService : IHabitService
         {
             Title = dto.Title.Trim(),
             Description = dto.Description.Trim(),
-            LucideIcon = dto.LucideIcon.Trim(),
+            Icon = dto.Icon.Trim(),
             Color = dto.Color.Trim(),
             FrequencyType = dto.FrequencyType,
             TargetValue = dto.TargetValue,
@@ -92,7 +92,7 @@ public class HabitService : IHabitService
 
         habit.Title = dto.Title.Trim();
         habit.Description = dto.Description.Trim();
-        habit.LucideIcon = dto.LucideIcon.Trim();
+        habit.Icon = dto.Icon.Trim();
         habit.Color = dto.Color.Trim();
         habit.FrequencyType = dto.FrequencyType;
         habit.TargetValue = dto.TargetValue;

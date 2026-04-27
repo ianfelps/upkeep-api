@@ -52,7 +52,7 @@ public class AppDbContext : DbContext
         {
             entity.Property(h => h.Title).IsRequired().HasMaxLength(100);
             entity.Property(h => h.Color).IsRequired().HasMaxLength(7);
-            entity.Property(h => h.LucideIcon).IsRequired().HasMaxLength(50);
+            entity.Property(h => h.Icon).IsRequired().HasMaxLength(50);
             entity.HasOne(h => h.User)
                   .WithMany()
                   .HasForeignKey(h => h.UserId)

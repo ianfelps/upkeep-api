@@ -19,7 +19,7 @@ public class UserProgressEndpointsTests : IntegrationTestBase
         {
             Title = title,
             Description = "Descrição",
-            LucideIcon = "star",
+            Icon = "star",
             Color = "#2563EB",
             FrequencyType = HabitFrequencyType.Daily,
             TargetValue = 1
@@ -159,7 +159,7 @@ public class UserProgressEndpointsTests : IntegrationTestBase
         {
             Title = habit2.Title,
             Description = habit2.Description,
-            LucideIcon = habit2.LucideIcon,
+            Icon = habit2.Icon,
             Color = habit2.Color,
             FrequencyType = HabitFrequencyType.Daily,
             TargetValue = habit2.TargetValue,

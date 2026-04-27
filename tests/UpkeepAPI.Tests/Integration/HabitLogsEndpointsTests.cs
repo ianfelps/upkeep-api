@@ -17,7 +17,7 @@ public class HabitLogsEndpointsTests : IntegrationTestBase
         {
             Title = title,
             Description = "Sessão matinal",
-            LucideIcon = "brain",
+            Icon = "brain",
             Color = "#2563EB",
             FrequencyType = HabitFrequencyType.Daily,
             TargetValue = 1

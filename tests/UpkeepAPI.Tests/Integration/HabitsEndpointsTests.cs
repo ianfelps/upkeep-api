@@ -19,7 +19,7 @@ public class HabitsEndpointsTests : IntegrationTestBase
         {
             Title = title,
             Description = "Sessão matinal",
-            LucideIcon = "brain",
+            Icon = "brain",
             Color = color,
             FrequencyType = frequencyType,
             TargetValue = targetValue,
@@ -174,7 +174,7 @@ public class HabitsEndpointsTests : IntegrationTestBase
         {
             Title = "Leitura",
             Description = "30 minutos",
-            LucideIcon = "book",
+            Icon = "book",
             Color = "#7C3AED",
             FrequencyType = HabitFrequencyType.Weekly,
             TargetValue = 3,

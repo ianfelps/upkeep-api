@@ -4,7 +4,7 @@ public class Habit : BaseEntity
 {
     public string Title { get; set; } = string.Empty;
     public string Description { get; set; } = string.Empty;
-    public string LucideIcon { get; set; } = string.Empty;
+    public string Icon { get; set; } = string.Empty;
     public string Color { get; set; } = string.Empty;
     public HabitFrequencyType FrequencyType { get; set; }
     public int TargetValue { get; set; }
