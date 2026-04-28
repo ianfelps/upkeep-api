@@ -13,7 +13,7 @@ WORKDIR /app
 COPY --from=build /app/publish ./
 
 ENV ASPNETCORE_ENVIRONMENT=Production
-ENV ASPNETCORE_URLS=http://0.0.0.0:8080
-EXPOSE 8080
+ENV ASPNETCORE_URLS=http://0.0.0.0:10000
+EXPOSE 10000
 
-ENTRYPOINT ["dotnet", "UpkeepAPI.dll"]
+CMD ASPNETCORE_URLS=http://0.0.0.0:${PORT:-10000} dotnet UpkeepAPI.dll
