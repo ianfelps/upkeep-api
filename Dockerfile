@@ -2,9 +2,7 @@
 FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
 WORKDIR /src
 
-COPY upkeep-api.sln ./
 COPY src/UpkeepAPI/UpkeepAPI.csproj src/UpkeepAPI/
-COPY tests/UpkeepAPI.Tests/UpkeepAPI.Tests.csproj tests/UpkeepAPI.Tests/
 RUN dotnet restore src/UpkeepAPI/UpkeepAPI.csproj
 
 COPY src/ src/
